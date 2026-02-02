@@ -1,0 +1,39 @@
+
+\begin{tabular}{lllrrl}
+\toprule
+Case & Model & Strategy & CV\_F1 & CV\_BalAcc & CV\_AUC\\
+\midrule
+CaseA & multinom & None & 0.5904157 & NA & NA\\
+CaseA & multinom & ClassWeight & 0.4267031 & NA & NA\\
+CaseA & multinom & RandomUnderSampler & 0.4251965 & NA & NA\\
+CaseA & nb & None & 0.4313275 & NA & NA\\
+CaseA & nb & RandomUnderSampler & 0.4825447 & NA & NA\\
+\addlinespace
+CaseA & lda & None & 0.6111086 & NA & NA\\
+CaseA & lda & RandomUnderSampler & 0.4204870 & NA & NA\\
+CaseA & qda & None & 0.4258065 & NA & NA\\
+CaseA & qda & RandomUnderSampler & 0.4088943 & NA & NA\\
+CaseB & glm & None & 0.5826609 & 0.5666061 & NA\\
+\addlinespace
+CaseB & glm & ClassWeight & 0.6331140 & 0.7459898 & NA\\
+CaseB & glm & RandomUnderSampler & 0.6327845 & 0.7457876 & NA\\
+CaseB & nb & None & 0.6355811 & 0.6875599 & NA\\
+CaseB & nb & RandomUnderSampler & 0.6575612 & 0.6820405 & NA\\
+CaseB & lda & None & 0.6068428 & 0.5857391 & NA\\
+\addlinespace
+CaseB & lda & RandomUnderSampler & 0.6288254 & 0.7458555 & NA\\
+CaseB & qda & None & 0.6302141 & 0.6804052 & NA\\
+CaseB & qda & RandomUnderSampler & 0.5977686 & 0.7250941 & NA\\
+CaseC & glm & None & 0.5954110 & 0.5779638 & NA\\
+CaseC & glm & ClassWeight & 0.6434991 & 0.7417341 & NA\\
+\addlinespace
+CaseC & glm & RandomUnderSampler & 0.6435145 & 0.7416772 & NA\\
+CaseC & nb & None & 0.6430327 & 0.6838693 & NA\\
+CaseC & nb & RandomUnderSampler & 0.6626470 & 0.6719265 & NA\\
+CaseC & lda & None & 0.6138271 & 0.5932228 & NA\\
+CaseC & lda & RandomUnderSampler & 0.6400972 & 0.7414865 & NA\\
+\addlinespace
+CaseC & qda & None & 0.6357973 & 0.6749288 & NA\\
+CaseC & qda & RandomUnderSampler & 0.6135700 & 0.7177495 & NA\\
+\bottomrule
+\end{tabular}

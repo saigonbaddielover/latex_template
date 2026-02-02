@@ -1,0 +1,719 @@
+---
+title: "Diabetes Analysis Artifact Pipeline"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+	toc: true
+	toc_depth: 3
+	theme: cosmo
+---
+
+<!-- 
+HOW TO RUN:
+Rscript -e 'rmarkdown::render("main_export.Rmd", output_format="html_document")'
+-->
+<!-- lint: skip_file -->
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.width = 10, fig.height = 6)
+
+# Install/Load required packages
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+pacman::p_load(tidyverse, caret, e1071, MASS, pROC, rstatix, reshape2, parallel, doParallel, jsonlite, knitr, xtable)
+
+# Optional but often needed dependencies
+if (requireNamespace("smotefamily", quietly = TRUE)) library(smotefamily)
+if (requireNamespace("klaR", quietly = TRUE)) library(klaR)
+
+# Set Seed
+SEED <- 42
+set.seed(SEED)
+```
+
+# A. Configuration & Utilities
+
+```{r config}
+# Paths
+DATA_PATH <- "diabetes_012_health_indicators_BRFSS2015.csv"
+OUT_DIR <- "outputs"
+
+# Ensure Output Directories
+ensure_dirs <- function() {
+    dir.create(file.path(OUT_DIR, "figures"), recursive = TRUE, showWarnings = FALSE)
+    dir.create(file.path(OUT_DIR, "tables"), recursive = TRUE, showWarnings = FALSE)
+    dir.create(file.path(OUT_DIR, "metrics"), recursive = TRUE, showWarnings = FALSE)
+}
+ensure_dirs()
+
+# Initialize Metrics Manifest
+metrics_manifest <- list()
+
+# Helper: Save CSV and LaTeX
+save_table <- function(df, base_name, caption = NULL) {
+    # CSV
+    csv_path <- file.path(OUT_DIR, "tables", paste0(base_name, ".csv"))
+    write.csv(df, csv_path, row.names = FALSE)
+
+    # LaTeX
+    tex_path <- file.path(OUT_DIR, "tables", paste0(base_name, ".tex"))
+    # Use knitr::kable for simple reliable latex export
+    # Escape special chars to avoid LaTeX errors
+    # Remove caption to avoid nested table env in Latex
+    tex_content <- knitr::kable(df,
+        format = "latex", booktabs = TRUE, longtable = FALSE,
+        row.names = FALSE
+    )
+    writeLines(tex_content, tex_path)
+}
+
+# Helper: Save ggplot
+save_ggplot <- function(p, filename, width = 10, height = 6) {
+    ggsave(
+        filename = file.path(OUT_DIR, "figures", filename), plot = p,
+        width = width, height = height, dpi = 300
+    )
+}
+
+# Helper: Save base plot
+save_base_plot <- function(filename, expr, width = 10, height = 6) {
+    while (dev.cur() > 1) dev.off()
+
+    png(file.path(OUT_DIR, "figures", filename), width = width, height = height, units = "in", res = 300)
+    eval(expr)
+    dev.off()
+}
+
+# Helper: Macro F1
+macro_f1 <- function(y_true, y_pred) {
+    # Handle both factor and character inputs
+    y_true <- as.factor(y_true)
+    y_pred <- factor(y_pred, levels = levels(y_true))
+
+    cm <- confusionMatrix(y_pred, y_true, mode = "everything")
+
+    # For binary classification, caret's F1 is usually for the positive class.
+    # We need Macro Average of both classes.
+    if (!is.null(cm$byClass)) {
+        # Check if byClass is a vector (binary) or matrix (multiclass)
+        if (is.vector(cm$byClass)) {
+            # Binary case: byClass contains metrics for the positive class.
+            # We need to compute F1 for the negative class manually or re-run confusionMatrix?
+            # Simpler: Get F1 for both classes manually from table
+            tbl <- cm$table
+            # F1_k = 2 * P_k * R_k / (P_k + R_k)
+            # We can just use the byClass logic if we force multiclass summary,
+            # but easier to manually compute from table for robustness.
+            n_classes <- nrow(tbl)
+            f1_scores <- numeric(n_classes)
+            for (i in 1:n_classes) {
+                tp <- tbl[i, i]
+                fp <- sum(tbl[i, ]) - tp
+                fn <- sum(tbl[, i]) - tp
+                precision <- if ((tp + fp) > 0) tp / (tp + fp) else 0
+                recall <- if ((tp + fn) > 0) tp / (tp + fn) else 0
+                f1_scores[i] <- if ((precision + recall) > 0) 2 * precision * recall / (precision + recall) else 0
+            }
+            return(mean(f1_scores, na.rm = TRUE))
+        } else {
+            # Multiclass: byClass is a matrix
+            return(mean(cm$byClass[, "F1"], na.rm = TRUE))
+        }
+    } else {
+        # Fallback
+        return(NA)
+    }
+}
+
+# Check existence
+if (!file.exists(DATA_PATH)) {
+    stop(paste("Data file not found at", DATA_PATH))
+}
+```
+
+# B. Data Ingestion & Dictionary
+
+```{r ingestion}
+print("--- Loading Data ---")
+df <- read.csv(DATA_PATH)
+
+metrics_manifest$dataset_n <- nrow(df)
+metrics_manifest$dataset_p <- ncol(df)
+
+# Definitions
+cols_binary <- c(
+    "HighBP", "HighChol", "CholCheck", "Smoker", "Stroke", "HeartDiseaseorAttack",
+    "PhysActivity", "Fruits", "Veggies", "HvyAlcoholConsump", "AnyHealthcare",
+    "NoDocbcCost", "DiffWalk", "Sex"
+)
+cols_ordinal <- c("Age", "Education", "Income", "GenHlth")
+cols_numeric <- c("BMI", "MentHlth", "PhysHlth")
+target_col <- "Diabetes_012"
+
+# Type Processing
+df[cols_binary] <- lapply(df[cols_binary], factor)
+df[[target_col]] <- factor(df[[target_col]])
+df[cols_ordinal] <- lapply(df[cols_ordinal], as.integer)
+df[cols_numeric] <- lapply(df[cols_numeric], as.numeric)
+```
+
+# C. Data Quality & Distribution Tables
+
+```{r qc_tables}
+print("--- Generating Tables ---")
+
+# T1_target_dist: Target Distribution
+target_dist <- df |>
+    count(!!sym(target_col)) |>
+    mutate(Proportion = n / sum(n))
+save_table(target_dist, "T1_target_dist", "Target Distribution (Diabetes_012)")
+
+metrics_manifest$target_dist <- purrr::transpose(target_dist)
+
+# T1_cases_dist: Case Distributions
+# Define Cases
+df$Target_CaseA <- df[[target_col]]
+df$Target_CaseB <- factor(ifelse(df[[target_col]] == 2, 1, 0)) # 2 vs {0,1}
+df$Target_CaseC <- factor(ifelse(df[[target_col]] %in% c(1, 2), 1, 0)) # {1,2} vs 0
+
+cases_info <- list(
+    list(name = "CaseA", col = "Target_CaseA", desc = "{0, 1, 2}"),
+    list(name = "CaseB", col = "Target_CaseB", desc = "2 vs {0, 1}"),
+    list(name = "CaseC", col = "Target_CaseC", desc = "{1, 2} vs 0")
+)
+
+case_dist_list <- list()
+metrics_manifest$cases <- list()
+
+for (case in cases_info) {
+    counts <- table(df[[case$col]])
+    props <- prop.table(counts)
+    imbalance <- round(max(counts) / min(counts), 2)
+
+    # Add to dataframe for T1
+    dist_df <- as.data.frame(counts)
+    colnames(dist_df) <- c("Class", "Count")
+    dist_df$Proportion <- as.numeric(props)
+    dist_df$Case <- case$name
+    dist_df$ImbalanceRatio <- imbalance
+
+    case_dist_list[[case$name]] <- dist_df
+
+    metrics_manifest$cases[[case$name]] <- list(
+        counts = as.list(counts),
+        proportions = as.list(props),
+        imbalance_ratio = imbalance
+    )
+}
+all_cases_dist <- do.call(rbind, case_dist_list)
+save_table(all_cases_dist, "T1_cases_dist", "Case Distributions and Imbalance")
+
+# T2_numeric_summary: Numeric Summary by Diabetes_012
+num_summary <- df |>
+    group_by(!!sym(target_col)) |>
+    summarise(across(all_of(cols_numeric), list(mean = mean, sd = sd, median = median)))
+save_table(num_summary, "T2_numeric_summary", "Numeric Summary by Target")
+
+# T3_binary_probs: Probabilities of Key Binary Vars
+# Key vars requested: HighBP, HighChol, Smoker, Stroke, HeartDiseaseorAttack, DiffWalk
+key_binary_vars <- c("HighBP", "HighChol", "Smoker", "Stroke", "HeartDiseaseorAttack", "DiffWalk")
+prob_list <- list()
+
+for (v in key_binary_vars) {
+    # P(Var=1 | Target=k)
+    # df[[v]] is factor 0/1. Convert to numeric to get mean (prob of 1)
+    prob_df <- df |>
+        group_by(!!sym(target_col)) |>
+        summarise(
+            Variable = v,
+            Prob_1 = mean(as.numeric(as.character(.data[[v]]))),
+            .groups = "drop"
+        )
+    prob_list[[v]] <- prob_df
+}
+binary_probs <- do.call(rbind, prob_list)
+save_table(binary_probs, "T3_binary_probs", "Probability of Condition=1 given Target")
+```
+
+# E. EDA Figures
+
+```{r eda_figures}
+print("--- Generating EDA Figures ---")
+
+# F1: BMI Boxplot
+p1 <- ggplot(df, aes(x = !!sym(target_col), y = BMI, fill = !!sym(target_col))) +
+    geom_boxplot() +
+    labs(title = "BMI Distribution by Diabetes Status") +
+    theme_minimal()
+save_ggplot(p1, "F1_bmi_boxplot.png")
+
+# F2: BMI Density
+p2 <- ggplot(df, aes(x = BMI, fill = !!sym(target_col))) +
+    geom_density(alpha = 0.5) +
+    labs(title = "BMI Density by Diabetes Status") +
+    theme_minimal()
+save_ggplot(p2, "F2_bmi_density.png")
+
+# F3: Proportion 6 Vars
+# Helper to calculate prop
+prop_data <- df |>
+    select(all_of(c(target_col, key_binary_vars))) |>
+    pivot_longer(cols = all_of(key_binary_vars), names_to = "Condition", values_to = "Value") |>
+    mutate(Value = as.numeric(as.character(Value))) |>
+    group_by(!!sym(target_col), Condition) |>
+    summarise(Proportion = mean(Value), .groups = "drop")
+
+p3 <- ggplot(prop_data, aes(x = Condition, y = Proportion, fill = !!sym(target_col))) +
+    geom_bar(stat = "identity", position = "dodge") +
+    labs(title = "Proportion of Conditions by Diabetes Status") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+save_ggplot(p3, "F3_prop_6vars.png")
+
+# F4: Age Risk Case C
+age_risk <- df |>
+    group_by(Age) |>
+    summarise(Risk_Prob = mean(as.numeric(as.character(Target_CaseC))))
+
+p4 <- ggplot(age_risk, aes(x = Age, y = Risk_Prob)) +
+    geom_bar(stat = "identity", fill = "salmon") +
+    labs(title = "Proportion of Diabetes/Risk by Age Group (Case C)", y = "Probability (Class 1)") +
+    theme_minimal()
+save_ggplot(p4, "F4_age_risk_casec.png")
+
+# F5: Spearman Correlation
+cor_data <- df |> select(all_of(c(cols_numeric, cols_ordinal)))
+cor_matrix <- cor(cor_data, method = "spearman")
+melted_cor <- melt(cor_matrix)
+
+p5 <- ggplot(melted_cor, aes(x = Var1, y = Var2, fill = value)) +
+    geom_tile() +
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white", limit = c(-1, 1)) +
+    labs(title = "Spearman Correlation") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90))
+save_ggplot(p5, "F5_spearman_corr.png")
+```
+
+# F. Statistical Tests
+
+```{r stats}
+print("--- Statistical Tests ---")
+
+results_list <- list()
+test_vars <- c(cols_binary, cols_ordinal)
+
+cramers_v <- function(tbl) {
+    chi <- chisq.test(tbl, correct = FALSE)$statistic
+    n <- sum(tbl)
+    k <- min(dim(tbl)) - 1
+    sqrt(chi / (n * k))
+}
+
+# Chi-Square
+for (var in test_vars) {
+    tbl <- table(df[[var]], df[[target_col]])
+    test <- chisq.test(tbl)
+    cv <- cramers_v(tbl)
+    results_list[[length(results_list) + 1]] <- data.frame(
+        Variable = var, Test = "Chi-square", p_value = test$p.value,
+        Effect_Size_Name = "Cramers_V", Effect_Size_Value = cv
+    )
+}
+
+# Kruskal-Wallis
+epsilon_squared <- function(H, n) {
+    H / ((n^2 - 1) / (n + 1))
+}
+for (var in cols_numeric) {
+    f <- as.formula(paste(var, "~", target_col))
+    test <- kruskal.test(f, data = df)
+    es <- epsilon_squared(test$statistic, nrow(df))
+    results_list[[length(results_list) + 1]] <- data.frame(
+        Variable = var, Test = "Kruskal-Wallis", p_value = test$p.value,
+        Effect_Size_Name = "Epsilon_Sq", Effect_Size_Value = as.numeric(es)
+    )
+}
+
+stats_df <- do.call(rbind, results_list)
+stats_df$p_adj_fdr <- p.adjust(stats_df$p_value, method = "BH")
+stats_df$p_adj_holm <- p.adjust(stats_df$p_value, method = "holm")
+stats_df$Significant <- stats_df$p_adj_fdr < 0.05
+
+# T4_stats_tests
+save_table(stats_df, "T4_stats_tests", "Statistical Tests Results")
+
+# T4_stats_top15
+top15 <- stats_df |>
+    arrange(desc(Effect_Size_Value)) |>
+    head(15)
+save_table(top15, "T4_stats_top15", "Top 15 Variables by Effect Size")
+```
+
+# F2. Permutation & Bootstrap
+
+```{r advanced_inference}
+print("--- Permutation & Bootstrap ---")
+
+metrics_manifest$permutation <- list()
+metrics_manifest$bootstrap <- list()
+
+permutation_test_diff <- function(x, y, n_perms = 1000) {
+    obs_diff <- mean(x) - mean(y)
+    combined <- c(x, y)
+    n_x <- length(x)
+    perm_diffs <- replicate(n_perms, {
+        shuffled <- sample(combined)
+        mean(shuffled[1:n_x]) - mean(shuffled[(n_x + 1):length(combined)])
+    })
+    p_val <- mean(abs(perm_diffs) >= abs(obs_diff))
+    list(obs = obs_diff, p_val = p_val, dist = perm_diffs)
+}
+
+bootstrap_ci_diff <- function(x, y, n_boot = 1000) {
+    boot_diffs <- replicate(n_boot, {
+        bx <- sample(x, replace = TRUE)
+        by <- sample(y, replace = TRUE)
+        mean(bx) - mean(by)
+    })
+    quantile(boot_diffs, c(0.025, 0.975))
+}
+
+# Case B data
+case_b_binary <- as.numeric(as.character(df$Target_CaseB))
+group_diab_bmi <- df$BMI[case_b_binary == 1]
+group_non_bmi <- df$BMI[case_b_binary == 0]
+
+# BMI Permutation
+res_bmi <- permutation_test_diff(group_diab_bmi, group_non_bmi, n_perms = 1000)
+save_base_plot("F6_perm_bmi_diff.png", {
+    hist(res_bmi$dist, main = "Permutation Dist (BMI)", breaks = 30, col = "gray")
+    abline(v = res_bmi$obs, col = "red", lwd = 2)
+})
+metrics_manifest$permutation$bmi_obs_diff <- res_bmi$obs
+metrics_manifest$permutation$bmi_p_value <- res_bmi$p_val
+
+# BMI Bootstrap
+ci_bmi <- bootstrap_ci_diff(group_diab_bmi, group_non_bmi, n_boot = 1000)
+metrics_manifest$bootstrap$bmi_ci_low <- ci_bmi[1]
+metrics_manifest$bootstrap$bmi_ci_high <- ci_bmi[2]
+
+# HighBP Permutation
+group_diab_bp <- as.numeric(as.character(df$HighBP[case_b_binary == 1]))
+group_non_bp <- as.numeric(as.character(df$HighBP[case_b_binary == 0]))
+
+res_bp <- permutation_test_diff(group_diab_bp, group_non_bp, n_perms = 1000)
+save_base_plot("F7_perm_highbp_diff.png", {
+    hist(res_bp$dist, main = "Permutation Dist (HighBP)", breaks = 30, col = "lightblue")
+    abline(v = res_bp$obs, col = "red", lwd = 2)
+})
+metrics_manifest$permutation$highbp_obs_diff <- res_bp$obs
+metrics_manifest$permutation$highbp_p_value <- res_bp$p_val
+```
+
+# G. Modeling
+
+```{r modeling}
+print("--- Modeling ---")
+
+feature_cols <- c(cols_numeric, cols_binary, cols_ordinal)
+
+# Global Split - REMOVED, using case-specific split below
+# set.seed(SEED)
+# train_idx <- createDataPartition(df[[target_col]], p = 0.8, list = FALSE)
+
+# Parallel
+cores <- min(22, parallel::detectCores() - 1)
+if (cores < 1) cores <- 1
+cl <- makePSOCKcluster(cores)
+registerDoParallel(cl)
+print(paste("Running on", cores, "cores"))
+
+# Setup
+get_train_control <- function(strategy, seed) {
+    ctrl <- trainControl(
+        method = "cv",
+        number = 10,
+        classProbs = TRUE,
+        summaryFunction = multiClassSummary,
+        savePredictions = "final",
+        verboseIter = FALSE,
+        allowParallel = TRUE
+    )
+    if (strategy == "RandomOverSampler") {
+        ctrl$sampling <- "up"
+    } else if (strategy == "RandomUnderSampler") ctrl$sampling <- "down"
+    return(ctrl)
+}
+
+run_experiment_r <- function() {
+    cases <- list(CaseA = "Target_CaseA", CaseB = "Target_CaseB", CaseC = "Target_CaseC")
+    models <- c("glm", "nb", "lda", "qda")
+    strategies <- c("None", "ClassWeight", "RandomUnderSampler")
+    results <- list()
+
+    for (case_name in names(cases)) {
+        target_var <- cases[[case_name]]
+        print(paste("Processing", case_name))
+
+        sub_df <- dplyr::select(df, dplyr::all_of(c(feature_cols, target_var)))
+        colnames(sub_df)[ncol(sub_df)] <- "Class"
+        levels(sub_df$Class) <- make.names(levels(sub_df$Class))
+
+        # Split by specific case target
+        set.seed(SEED)
+        train_idx <- createDataPartition(sub_df$Class, p = 0.8, list = FALSE)
+        train_data <- sub_df[train_idx, ]
+
+        # Metric choice
+        metric_to_use <- "ROC"
+        if (case_name == "CaseA") metric_to_use <- "logLoss"
+
+        for (model in models) {
+            current_model <- model
+            if (model == "glm" && length(levels(train_data$Class)) > 2) current_model <- "multinom"
+
+            for (strat in strategies) {
+                if (strat == "ClassWeight" && !(current_model %in% c("glm", "multinom"))) next
+
+                tr_ctrl <- get_train_control(strat, SEED)
+                wts <- NULL
+                if (strat == "ClassWeight") {
+                    tab <- table(train_data$Class)
+                    wts <- (1 / tab)[train_data$Class]
+                }
+
+                tryCatch(
+                    {
+                        set.seed(SEED)
+                        fit <- train(Class ~ .,
+                            data = train_data, method = current_model,
+                            trControl = tr_ctrl, weights = wts, metric = metric_to_use,
+                            tuneLength = 3, trace = FALSE
+                        )
+
+                        # Custom CV Macro F1 Calculation
+                        # fit$pred contains predictions from hold-out folds in CV
+                        # Group by Resample, calc Macro F1, then mean
+                        cv_preds <- fit$pred
+                        if (!is.null(cv_preds)) {
+                            f1_folds <- cv_preds |>
+                                group_by(Resample) |>
+                                summarise(MacroF1 = macro_f1(obs, pred)) |>
+                                summarise(MeanMacroF1 = mean(MacroF1, na.rm = TRUE)) |>
+                                pull(MeanMacroF1)
+                            f1_score <- f1_folds
+                        } else {
+                            # Fallback if no predictions saved
+                            # best_res <- fit$results[as.numeric(row.names(fit$bestTune)), ]
+                            best_res <- dplyr::semi_join(fit$results, fit$bestTune, by = names(fit$bestTune))
+                            f1_score <- if ("Mean_F1" %in% names(best_res)) best_res$Mean_F1 else NA
+                        }
+
+                        # best_res <- fit$results[as.numeric(row.names(fit$bestTune)), ]
+                        best_res <- dplyr::semi_join(fit$results, fit$bestTune, by = names(fit$bestTune))
+                        bal_acc <- if ("Balanced_Accuracy" %in% names(best_res)) best_res$Balanced_Accuracy else NA
+                        auc_val <- if ("ROC" %in% names(best_res)) best_res$ROC else NA
+
+                        results[[length(results) + 1]] <- data.frame(
+                            Case = case_name, Model = current_model, Strategy = strat,
+                            CV_F1 = f1_score, CV_BalAcc = bal_acc, CV_AUC = auc_val
+                        )
+                    },
+                    error = function(e) {
+                        print(paste("Failed:", case_name, current_model, strat))
+                    }
+                )
+            }
+        }
+    }
+    if (length(results) == 0) {
+        return(data.frame())
+    }
+    return(dplyr::bind_rows(results))
+}
+
+results_df <- run_experiment_r()
+# Don't stop cluster yet, need it for best model retraining
+
+save_table(results_df, "T5_model_grid", "Model Grid Search Results")
+```
+
+# G7. Best Model Evaluation & Artifacts
+
+```{r evaluation}
+print("--- Best Models & Artifacts ---")
+
+metrics_manifest$best_per_case <- list()
+best_overall_metric <- -1
+best_overall_info <- NULL
+
+if (nrow(results_df) > 0) {
+    cases_list <- unique(results_df$Case)
+    best_models_df <- list()
+
+    for (c in cases_list) {
+        # Pick best by CV_F1
+        best_row <- results_df |>
+            filter(Case == c) |>
+            arrange(desc(CV_F1)) |>
+            slice(1)
+
+        # Retrain
+        case_col <- ifelse(c == "CaseA", "Target_CaseA", ifelse(c == "CaseB", "Target_CaseB", "Target_CaseC"))
+        sub_df <- df |> select(all_of(c(feature_cols, case_col)))
+        colnames(sub_df)[ncol(sub_df)] <- "Class"
+        levels(sub_df$Class) <- make.names(levels(sub_df$Class))
+
+        # Re-split by specific case target (same seed)
+        set.seed(SEED)
+        train_idx <- createDataPartition(sub_df$Class, p = 0.8, list = FALSE)
+
+        train_data <- sub_df[train_idx, ]
+        test_data <- sub_df[-train_idx, ]
+
+        ctrl <- get_train_control(best_row$Strategy, SEED)
+        wts <- NULL
+        if (best_row$Strategy == "ClassWeight") {
+            tab <- table(train_data$Class)
+            wts <- (1 / tab)[train_data$Class]
+        }
+
+        set.seed(SEED)
+        final_fit <- train(Class ~ .,
+            data = train_data, method = best_row$Model,
+            trControl = ctrl, weights = wts, tuneLength = 3, trace = FALSE
+        )
+
+        # Predict & Test Metric
+        preds <- predict(final_fit, test_data)
+        test_macro_f1 <- macro_f1(test_data$Class, preds)
+
+        # Store for T5_best_models
+        best_row$Test_F1 <- test_macro_f1
+        best_models_df[[c]] <- best_row
+
+        metrics_manifest$best_per_case[[c]] <- list(
+            model = best_row$Model,
+            strategy = best_row$Strategy,
+            cv_f1 = best_row$CV_F1,
+            test_macro_f1 = test_macro_f1
+        )
+
+        # Track Global Best (by Test Macro F1)
+        if (!is.na(test_macro_f1) && test_macro_f1 > best_overall_metric) {
+            best_overall_metric <- test_macro_f1
+            best_overall_info <- list(
+                case = c,
+                model = final_fit,
+                row = best_row,
+                test_data = test_data,
+                preds = preds
+            )
+        }
+    }
+
+    best_summary <- do.call(rbind, best_models_df)
+    save_table(best_summary, "T5_best_models", "Best Models Per Case")
+} else {
+    stop("No models trained successfully.")
+}
+
+stopCluster(cl)
+```
+
+# H. Global Best Artifacts
+
+```{r global_best}
+print("--- Generating Global Best Artifacts ---")
+
+if (!is.null(best_overall_info)) {
+    bo <- best_overall_info
+
+    # Metrics Manifest Update
+    metrics_manifest$best_overall <- list(
+        case_name = bo$case,
+        model = bo$row$Model,
+        strategy = bo$row$Strategy,
+        test_macro_f1 = best_overall_metric
+    )
+
+    # F8: Confusion Matrix
+    cm <- confusionMatrix(bo$preds, bo$test_data$Class)
+    cm_table <- as.data.frame(cm$table)
+    # ggplot heatmap
+    p8 <- ggplot(cm_table, aes(x = Reference, y = Prediction, fill = Freq)) +
+        geom_tile() +
+        geom_text(aes(label = Freq), color = "white") +
+        scale_fill_gradient(low = "blue", high = "red") +
+        labs(title = paste("Confusion Matrix -", bo$case, "(", bo$row$Model, ")")) +
+        theme_minimal()
+    save_ggplot(p8, "F8_confusion_bestcase.png")
+
+    metrics_manifest$confusion_matrix_bestcase <- as.data.frame(cm$table)
+
+    # F9: ROC (if binary)
+    if (length(levels(bo$test_data$Class)) == 2) {
+        probs <- predict(bo$model, bo$test_data, type = "prob")
+        # Assume second level is positive "X1" or similar
+        pos_class <- levels(bo$test_data$Class)[2]
+        roc_obj <- roc(bo$test_data$Class, probs[[pos_class]], levels = levels(bo$test_data$Class))
+
+        save_base_plot("F9_roc_bestcase.png", {
+            plot(roc_obj, main = paste("ROC Curve -", bo$case))
+        })
+        metrics_manifest$roc_auc_bestcase <- auc(roc_obj)
+    }
+
+    # T6: Coefficients (if GLM/Multinom)
+    if (bo$row$Model %in% c("glm", "multinom")) {
+        imp <- varImp(bo$model, scale = FALSE)
+        # varImp for caret glm returns statistic, not coef directly usually.
+        # Better to get coefficients from finalModel
+        if (bo$row$Model == "glm") {
+            coefs <- coef(bo$model$finalModel)
+            # Convert to DF
+            coef_df <- data.frame(Feature = names(coefs), Coefficient = coefs)
+            coef_df$OR <- exp(coef_df$Coefficient)
+            coef_df <- coef_df |>
+                arrange(desc(abs(Coefficient))) |>
+                head(15)
+            save_table(coef_df, "T6_coeff_or", "Top 15 Coefficients & Odds Ratios")
+
+            metrics_manifest$top_features <- coef_df
+        } else {
+            # Multinom
+            # coefs are matrix
+            coefs <- coef(bo$model$finalModel)
+            # Just save raw dump or skipped for complexity in instruction
+            # Instruction says "only if best overall is Logistic/GLM"
+        }
+    }
+
+    # Bootstrapping CI for Best Model Test Macro F1
+    # This matches "boot_ci_low", "boot_ci_high" requirement
+    test_y <- bo$test_data$Class
+    pred_y <- bo$preds
+
+    boot_f1s <- replicate(1000, {
+        idx <- sample(length(test_y), replace = TRUE)
+        t_boot <- test_y[idx]
+        p_boot <- pred_y[idx]
+        # Avoid errors if only 1 class sampled
+        if (length(unique(t_boot)) < 2) {
+            return(NA)
+        }
+        macro_f1(t_boot, p_boot)
+    })
+    boot_f1s <- na.omit(boot_f1s)
+    ci <- quantile(boot_f1s, c(0.025, 0.975))
+
+    metrics_manifest$best_overall$boot_ci_low <- ci[1]
+    metrics_manifest$best_overall$boot_ci_high <- ci[2]
+}
+
+# Final JSON Export
+write_json(metrics_manifest, file.path(OUT_DIR, "metrics", "metrics_manifest.json"),
+    auto_unbox = TRUE, pretty = TRUE
+)
+
+print("--- Pipeline Complete. Artifacts in outputs/ ---")
+```

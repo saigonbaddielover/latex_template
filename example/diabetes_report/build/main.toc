@@ -1,0 +1,14 @@
+\thispagestyle {empty}
+\contentsline {section}{\hbox to\@tempdima {\hfil }DANH MỤC BẢNG BIỂU}{2}{section*.3}%
+\contentsline {section}{\hbox to\@tempdima {\hfil }DANH MỤC HÌNH VẼ}{3}{section*.4}%
+\contentsline {section}{\hbox to\@tempdima {\hfil }TÓM TẮT ĐỒ ÁN}{5}{section*.5}%
+\contentsline {section}{\hbox to\@tempdima {\hfil } DANH MỤC KÝ HIỆU VÀ CHỮ VIẾT TẮT}{i}{section*.6}%
+\contentsline {section}{\numberline {1}A. ĐỀ TÀI}{1}{section.7}%
+\contentsline {section}{\numberline {2}B. YÊU CẦU}{2}{section.8}%
+\contentsline {subsection}{\numberline {2.1}1. Bản đề xuất \& 2. Mục tiêu phân tích}{2}{subsection.9}%
+\contentsline {subsection}{\numberline {2.2}3. Phương pháp và chiến lược}{2}{subsection.14}%
+\contentsline {subsection}{\numberline {2.3}4. Mô tả và biểu diễn tổng hợp dữ liệu}{2}{subsection.15}%
+\contentsline {subsection}{\numberline {2.4}5. Phân tích để đạt được mục tiêu}{5}{subsection.21}%
+\contentsline {subsubsection}{\numberline {2.4.1}Phân tích thống kê (M2)}{5}{subsubsection.22}%
+\contentsline {subsubsection}{\numberline {2.4.2}Xây dựng và tối ưu mô hình (M3, M4)}{6}{subsubsection.25}%
+\contentsline {subsection}{\numberline {2.5}6. Nhận xét và kết luận}{8}{subsection.30}%

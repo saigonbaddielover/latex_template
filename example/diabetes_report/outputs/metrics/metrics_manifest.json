@@ -1,0 +1,119 @@
+{
+  "dataset_n": 253680,
+  "dataset_p": 22,
+  "target_dist": [
+    {
+      "Diabetes_012": 1,
+      "n": 213703,
+      "Proportion": 0.8424
+    },
+    {
+      "Diabetes_012": 2,
+      "n": 4631,
+      "Proportion": 0.0183
+    },
+    {
+      "Diabetes_012": 3,
+      "n": 35346,
+      "Proportion": 0.1393
+    }
+  ],
+  "cases": {
+    "CaseA": {
+      "counts": {
+        "0": 213703,
+        "1": 4631,
+        "2": 35346
+      },
+      "proportions": {
+        "0": 0.8424,
+        "1": 0.0183,
+        "2": 0.1393
+      },
+      "imbalance_ratio": 46.15
+    },
+    "CaseB": {
+      "counts": {
+        "0": 218334,
+        "1": 35346
+      },
+      "proportions": {
+        "0": 0.8607,
+        "1": 0.1393
+      },
+      "imbalance_ratio": 6.18
+    },
+    "CaseC": {
+      "counts": {
+        "0": 213703,
+        "1": 39977
+      },
+      "proportions": {
+        "0": 0.8424,
+        "1": 0.1576
+      },
+      "imbalance_ratio": 5.35
+    }
+  },
+  "permutation": {
+    "bmi_obs_diff": 4.1382,
+    "bmi_p_value": 0,
+    "highbp_obs_diff": 0.3761,
+    "highbp_p_value": 0
+  },
+  "bootstrap": {
+    "bmi_ci_low": 4.0627,
+    "bmi_ci_high": 4.2189
+  },
+  "best_per_case": {
+    "CaseA": {
+      "model": "lda",
+      "strategy": "None",
+      "cv_f1": 0.6111,
+      "test_macro_f1": 0.6084
+    },
+    "CaseB": {
+      "model": "nb",
+      "strategy": "RandomUnderSampler",
+      "cv_f1": 0.6576,
+      "test_macro_f1": 0.6609
+    },
+    "CaseC": {
+      "model": "nb",
+      "strategy": "RandomUnderSampler",
+      "cv_f1": 0.6626,
+      "test_macro_f1": 0.6664
+    }
+  },
+  "best_overall": {
+    "case_name": "CaseC",
+    "model": "nb",
+    "strategy": "RandomUnderSampler",
+    "test_macro_f1": 0.6664,
+    "boot_ci_low": 0.6609,
+    "boot_ci_high": 0.6719
+  },
+  "confusion_matrix_bestcase": [
+    {
+      "Prediction": "X0",
+      "Reference": "X0",
+      "Freq": 37358
+    },
+    {
+      "Prediction": "X1",
+      "Reference": "X0",
+      "Freq": 5382
+    },
+    {
+      "Prediction": "X0",
+      "Reference": "X1",
+      "Freq": 4155
+    },
+    {
+      "Prediction": "X1",
+      "Reference": "X1",
+      "Freq": 3840
+    }
+  ],
+  "roc_auc_bestcase": 0.8042
+}
