@@ -1,0 +1,189 @@
+\documentclass{article} % Tạo một bản báo cáo
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc} % Để sử dụng Tiếng Việt
+\usepackage[fontsize=13pt]{scrextend} % Set fontsize=13pt
+\usepackage[paperheight=29.7cm,paperwidth=21cm,right=2cm,left=3cm,top=2cm,bottom=2.5cm]{geometry}% A4, margins
+\usepackage{mathptmx} % Time New Roman
+\usepackage{graphicx} % Thư viện chèn ảnh
+\usepackage{float} % Set vị trí chèn ảnh3 
+\usepackage{tikz} % Thư viện tạo khung bìa
+\usepackage{amssymb} % To use \mathbb ( mới thêm sau)
+\usepackage{amsmath}  %( mới thêm sau)
+\usetikzlibrary{calc} % Thư viện tikz
+\usepackage{indentfirst} % Thư viện thụt đầu dòng
+\renewcommand{\baselinestretch}{1.2} % Giãn dòng 1.2
+\setlength{\parskip}{6pt} % Spacing after
+\setlength{\parindent}{1cm} % Set khoảng cách thụt đầu dòng mỗi đoạn
+\emergencystretch=2em
+\usepackage{titlesec} % Thư viện để set up các kiểu chữ
+\setcounter{secnumdepth}{4} % 4 Heading
+\titlespacing*{\section}{0pt}{0pt}{30pt} % Heading 1
+\titleformat*{\section}{\fontsize{16pt}{0pt}\selectfont \bfseries \centering}
+
+\titlespacing*{\subsection}{0pt}{6pt}{0pt} % Heading 2
+\titleformat*{\subsection}{\fontsize{14pt}{0pt}\selectfont \bfseries}
+
+\titlespacing*{\subsubsection}{0pt}{6pt}{0pt} % Heading 3
+\titleformat*{\subsubsection}{\fontsize{13pt}{0pt}\selectfont \bfseries \itshape}
+
+\titlespacing*{\paragraph}{0pt}{0pt}{0pt} % Heading 4
+\titleformat*{\paragraph}{\fontsize{13pt}{0pt}\selectfont \itshape}
+
+\renewcommand{\figurename}{\fontsize{12pt}{0pt}\selectfont \bfseries Hình}
+\renewcommand{\thefigure}{\thesection.\arabic{figure}}
+\usepackage[font=bf]{caption}
+\captionsetup[figure]{labelsep=space}
+
+\renewcommand{\tablename}{\fontsize{12pt}{0pt}\selectfont \bfseries Bảng}
+\renewcommand{\thetable}{\thesection.\arabic{table}}
+\captionsetup[table]{labelsep=space}
+
+\usepackage{tabularx}
+\newcolumntype{s}{>{\hsize=.3\hsize}X}
+\newcolumntype{y}{>{\hsize=.4\hsize}X}
+\newcolumntype{d}{>{\hsize=.1\hsize}X}
+\newcolumntype{a}{>{\hsize=1.1\hsize}X}
+\newcolumntype{g}{>{\hsize=5\hsize}X}
+\renewcommand{\tabularxcolumn}[1]{>{\small}m{#1}}
+
+\renewcommand{\theequation}{\thesection.\arabic{equation}} % Thay đổi đánh số phương trình mặc định
+\newtheorem{theorem}{Định lý}[section]
+\newtheorem{defn}[theorem]{Định nghĩa}
+\newtheorem{corollary}[theorem]{Hệ quả}
+\newtheorem{lemma}[theorem]{Bổ đề}
+
+\usepackage{lipsum} % Thư viện tạo chữ linh tinh. 
+\renewcommand{\contentsname}{MỤC LỤC}
+\renewcommand{\listfigurename}{DANH MỤC HÌNH VẼ}
+\renewcommand{\listtablename}{DANH MỤC BẢNG BIỂU}
+\renewcommand{\refname}{TÀI LIỆU THAM KHẢO}
+
+\usepackage[hidelinks,hypertexnames=false]{hyperref}
+
+\usepackage{colortbl}
+\definecolor{LightCyan}{rgb}{0.88,1,1}
+\usepackage{forloop}
+\newcounter{loopcntr}
+\newcommand{\rpt}[2][1]{\forloop{loopcntr}{0}{\value{loopcntr}<#1}{#2}}
+
+\usepackage{enumitem} % modify enumerate format
+\setitemize{itemsep=0pt,leftmargin=1.25cm,topsep = 3pt} % modify enumerate label style
+
+\begin{document}
+
+\begin{titlepage}
+    \begin{tikzpicture}[overlay,remember picture]
+        \draw [line width=3pt]
+        ($ (current page.north west) + (3.0cm,-2.0cm) $)
+        rectangle
+        ($ (current page.south east) + (-2.0cm,2.5cm) $);
+        \draw [line width=0.5pt]
+        ($ (current page.north west) + (3.1cm,-2.1cm) $)
+        rectangle
+        ($ (current page.south east) + (-2.1cm,2.6cm) $);
+    \end{tikzpicture}
+    \begin{center}
+        \vspace{-12pt}  ĐẠI HỌC QUỐC GIA THÀNH PHỐ HỒ CHÍ MINH \\
+        \textbf{\fontsize{16pt}{0pt}\selectfont TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN}
+        \vspace{0.5cm}
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=2.26cm,height=2.26cm]{outputs/logo.png}
+        \end{figure}
+        \vspace{1.5cm}
+        \fontsize{24pt}{0pt}\selectfont BÁO CÁO CUỐI KÌ\\
+        \vspace{12pt}
+        \textbf{\fontsize{32pt}{0pt}\selectfont TÊN MÔN HỌC}
+        \vspace{1.5cm}
+    \end{center}
+    \begin{center}
+        \hspace{6pt}\textbf{\fontsize{14pt}{0pt}\selectfont ĐỀ TÀI:}
+    \end{center}
+    \begin{center}
+        \textbf{\fontsize{20pt}{0pt}\selectfont TÊN ĐỀ TÀI}
+        \vspace{1.5cm}
+        \begin{table}[H]
+            \centering
+            \begin{tabular}{l l}
+                \fontsize{14pt}{0pt}\selectfont Giảng viên:          & \fontsize{14pt}{0pt}\selectfont Tên Giảng Viên         \\[6pt]
+                \fontsize{14pt}{0pt}\selectfont Sinh viên thực hiện: & \fontsize{14pt}{0pt}\selectfont Tên Sinh Viên 1 – MSSV \\[6pt]
+                                                                     & \fontsize{14pt}{0pt}\selectfont Tên Sinh Viên 2 – MSSV \\[6pt]
+            \end{tabular}
+
+        \end{table}
+        \vspace{3.5cm}
+        \fontsize{14pt}{0pt}\selectfont Thành phố Hồ Chí Minh - \the\year
+    \end{center}
+\end{titlepage}
+\newpage
+
+% Tạo mục lục tự động
+\addtocontents{toc}{\protect\thispagestyle{empty}}
+\tableofcontents
+\thispagestyle{empty}
+\cleardoublepage
+
+% Tạo danh mục bảng biểu.
+\phantomsection
+\addcontentsline{toc}{section}{\numberline{}DANH MỤC BẢNG BIỂU}
+{\let\oldnumberline\numberline
+    \renewcommand{\numberline}{Bảng~\oldnumberline}
+    \listoftables}
+\newpage
+
+% Tóm tắt đồ án
+
+\section*{LỜI NÓI ĐẦU}
+\thispagestyle{empty}
+Nhập lời nói đầu tại đây...
+\cleardoublepage
+
+\section*{TÓM TẮT ĐỒ ÁN}
+\phantomsection\addcontentsline{toc}{section}{\numberline {}TÓM TẮT ĐỒ ÁN}
+Nhập tóm tắt đồ án tại đây...
+\cleardoublepage
+
+\pagenumbering{roman} % Đánh số thứ tự la mã
+\section*{DANH MỤC KÝ HIỆU VÀ CHỮ VIẾT TẮT}
+\phantomsection \addcontentsline{toc}{section}{\numberline {} DANH MỤC KÝ HIỆU VÀ CHỮ VIẾT TẮT}
+
+\begin{tabular}{ l l }
+    \hspace{1cm} Ký hiệu & \hspace{4cm} Giải thích \\
+    \hspace{1cm} ...     & \hspace{4cm} ...        \\
+\end{tabular}
+
+\newpage
+
+\pagenumbering{arabic} % Đánh số thứ tự 1,2,3...
+
+% Nhúng các chương từ các file riêng biệt
+\section{MỞ ĐẦU}
+
+\subsection{Lý do chọn đề tài}
+Nội dung...
+
+\subsection{Mục tiêu của đề tài}
+Nội dung...
+
+\newpage
+\section{NỘI DUNG CHÍNH}
+\subsection{Phần 1}
+Nội dung...
+
+\newpage
+\section{KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN}
+
+\subsection{Kết luận}
+Nội dung...
+
+\subsection{Hướng phát triển}
+Nội dung...
+
+\newpage
+\newpage
+\begin{thebibliography}{8}
+    \bibitem{example}
+    Tác giả, "Tên bài báo/sách," \emph{Nơi xuất bản}, Năm.
+\end{thebibliography}
+\newpage
+\end{document}
