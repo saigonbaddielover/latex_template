@@ -9,10 +9,10 @@ Install Git and Bash, then:
 ```bash
 git clone https://github.com/saigonbaddielover/latex_template.git
 cd latex_template
-./scripts/setup
+./scripts/setup.sh
 ```
 
-`setup` prepares Docker Engine (automatic installation supported on Ubuntu, Debian, Fedora and RHEL) and runs `scripts/test` to compile **both** examples end-to-end. Docker downloads the TeX Live image (approximately 9 GB) on first use. Installation and Docker group membership changes require confirmation and `sudo`; membership grants root-equivalent privileges. Run `newgrp docker` or log out and back in if prompted. Other distributions: [Docker installation instructions](https://docs.docker.com/engine/install/).
+`setup.sh` prepares Docker Engine (automatic installation supported on Ubuntu, Debian, Fedora and RHEL) and runs `scripts/test.sh` to compile **both** examples end-to-end. Docker downloads the TeX Live image (approximately 9 GB) on first use. Installation and Docker group membership changes require confirmation and `sudo`; membership grants root-equivalent privileges. Run `newgrp docker` or log out and back in if prompted. Other distributions: [Docker installation instructions](https://docs.docker.com/engine/install/).
 
 ## Choose a starting point
 
@@ -24,20 +24,20 @@ cd latex_template
 Create a project from either:
 
 ```bash
-./scripts/new quick_notes
-./scripts/new thesis example-long
+./scripts/new.sh quick_notes
+./scripts/new.sh thesis example-long
 ```
 
-`new` defaults to `example-lite` and copies the chosen template without generated PDFs or build files. Project names must be unique. Each project keeps its own `main.tex` as the build entry point, even when the document spans hundreds of pages.
+`new.sh` defaults to `example-lite` and copies the chosen template without generated PDFs or build files. Project names must be unique. Each project keeps its own `main.tex` as the build entry point, even when the document spans hundreds of pages.
 
 ## Build and manage reports
 
 ```bash
-./scripts/build quick_notes
-./scripts/build thesis
-./scripts/clean thesis
-./scripts/list
-./scripts/test
+./scripts/build.sh quick_notes
+./scripts/build.sh thesis
+./scripts/clean.sh thesis
+./scripts/list.sh
+./scripts/test.sh
 ```
 
 Edit `projects/<name>/main.tex` and supporting files in the same project directory. The final PDF is written to `projects/<name>/main.pdf`, with intermediates in `projects/<name>/build/`. The shared build script uses XeLaTeX and latexmk in Docker; no TeX installation or editor integration is needed on the host.
@@ -60,12 +60,12 @@ projects/
     references.bib
   <name>/                 Private report directory, ignored by Git
 scripts/
-  setup                   Prepare Docker, run E2E tests
-  new                     Create report using either example
-  build                   Compile a report
-  clean                   Remove generated outputs
-  list                    List projects
-  test                    Build and validate both examples
+  setup.sh                   Prepare Docker, run E2E tests
+  new.sh                     Create report using either example
+  build.sh                   Compile a report
+  clean.sh                   Remove generated outputs
+  list.sh                    List projects
+  test.sh                    Build and validate both examples
 ```
 
 `.gitignore` tracks only `projects/example-lite/`, `projects/example-long/` and the shared scripts; it ignores other project directories, PDFs and build artifacts. Back up private reports separately.

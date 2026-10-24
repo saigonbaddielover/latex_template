@@ -7,11 +7,11 @@ ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 for NAME in example-lite example-long; do
     PROJECT="$ROOT/projects/$NAME"
     PDF="$PROJECT/main.pdf"
-    "$ROOT/scripts/clean" "$NAME" >/dev/null
+    "$ROOT/scripts/clean.sh" "$NAME" >/dev/null
     mkdir -p -- "$PROJECT/build"
     LOG="$PROJECT/build/test.log"
     printf 'Building %s to verify LaTeX to PDF...\n' "$NAME"
-    if ! "$ROOT/scripts/build" "$NAME" >"$LOG" 2>&1; then
+    if ! "$ROOT/scripts/build.sh" "$NAME" >"$LOG" 2>&1; then
         tail -n 30 "$LOG" >&2
         printf 'Example build failed; see %s\n' "$LOG" >&2
         exit 1

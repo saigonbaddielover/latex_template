@@ -60,13 +60,13 @@ EOF
     sudo systemctl enable --now docker
 }
 
-[[ "$#" -eq 0 ]] || fail "usage: ./scripts/setup"
+[[ "$#" -eq 0 ]] || fail "usage: ./scripts/setup.sh"
 [[ "$(id -u)" -ne 0 ]] || fail "run as your regular user, not root"
 
 if docker info >/dev/null 2>&1; then
     printf 'Docker is ready.\n'
-    "$ROOT/scripts/test"
-    printf 'Setup complete. Run ./scripts/new my_report\n'
+    "$ROOT/scripts/test.sh"
+    printf 'Setup complete. Run ./scripts/new.sh my_report\n'
     exit 0
 fi
 
@@ -87,16 +87,16 @@ if ! id -nG | tr ' ' '\n' | grep -qx docker; then
         printf 'Docker group membership is not active in this shell.\n'
     else
         printf 'The docker group grants root-equivalent access to this machine.\n'
-        confirm "Add $USER to the docker group?" || fail "group access required to run ./scripts/build without sudo"
+        confirm "Add $USER to the docker group?" || fail "group access required to run ./scripts/build.sh without sudo"
         sudo groupadd -f docker
         sudo usermod -aG docker "$USER"
     fi
 fi
 
 if docker info >/dev/null 2>&1; then
-    "$ROOT/scripts/test"
-    printf 'Setup complete. Run ./scripts/new my_report\n'
+    "$ROOT/scripts/test.sh"
+    printf 'Setup complete. Run ./scripts/new.sh my_report\n'
 else
-    sudo -u "$USER" -g docker "$ROOT/scripts/test"
-    printf 'Setup complete. Run: newgrp docker\nThen run: ./scripts/new my_report\n'
+    sudo -u "$USER" -g docker "$ROOT/scripts/test.sh"
+    printf 'Setup complete. Run: newgrp docker\nThen run: ./scripts/new.sh my_report\n'
 fi
