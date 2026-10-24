@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+[[ "$#" -eq 0 ]] || { printf 'Usage: %s\n' "$0" >&2; exit 1; }
+EXAMPLE="$ROOT/projects/example"
+PDF="$EXAMPLE/main.pdf"
+"$ROOT/scripts/clean" example >/dev/null
+mkdir -p -- "$EXAMPLE/build"
+LOG="$EXAMPLE/build/test.log"
+printf 'Building example to verify LaTeX to PDF...\n'
+if ! "$ROOT/scripts/build" example >"$LOG" 2>&1; then
+    tail -n 30 "$LOG" >&2
+    printf 'Example build failed; see %s\n' "$LOG" >&2
+    exit 1
+fi
+[[ -s "$PDF" && "$(head -c 5 "$PDF")" == '%PDF-' ]] || { printf 'Example PDF is missing or invalid: %s\n' "$PDF" >&2; exit 1; }
+cmp -s -- "$PDF" "$EXAMPLE/build/main.pdf" || { printf 'Example PDF differs from build output.\n' >&2; exit 1; }
+printf 'Example PDF verified: %s\n' "$PDF"

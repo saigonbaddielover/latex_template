@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+[[ "$#" -eq 1 && "$1" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || { printf 'Usage: %s <name>\n' "$0" >&2; exit 1; }
+PROJECT="$ROOT/projects/$1"
+[[ ! -e "$PROJECT" && ! -L "$PROJECT" ]] || { printf 'Project already exists: %s\n' "$1" >&2; exit 1; }
+mkdir -- "$PROJECT"
+cp -- "$ROOT/projects/example/main.tex" "$PROJECT/main.tex"
+printf 'Created: %s\n' "$PROJECT"

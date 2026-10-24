@@ -1,10 +1,10 @@
 # LaTeX reports
 
-Minimal LaTeX-to-PDF workspace: one example, any number of independent reports, and shared terminal commands. No editor extension or host TeX installation needed.
+Minimal LaTeX-to-PDF workspace for independent reports. The example and shared scripts are tracked; personal reports remain local.
 
-## First-time setup (Linux)
+## First-time setup on Linux
 
-Install Git and Bash using your distribution's package manager, then clone the repository:
+Install Git and Bash with your system package manager, then:
 
 ```bash
 git clone https://github.com/saigonbaddielover/latex_template.git
@@ -12,42 +12,47 @@ cd latex_template
 ./scripts/setup
 ```
 
-`setup` checks Docker Engine and downloads the `texlive/texlive:latest` image (about 9 GB) if necessary. It **builds `projects/example/main.tex` from scratch** and checks that `projects/example/main.pdf` is a valid, nonempty PDF. Setup fails if the end-to-end build fails. Re-running setup rebuilds the example but does not reinstall Docker or redownload an existing image.
+`setup` prepares Docker Engine (Ubuntu, Debian, Fedora, and RHEL supported) and runs `scripts/test`. The test compiles `projects/example/main.tex` into a PDF, verifies the output, and fails if compilation fails. Docker automatically downloads the approximately 9 GB TeX Live image on first build.
 
-If Docker is missing, setup offers to install Docker Engine using official package repositories on **Ubuntu, Debian, Fedora, or RHEL**. On other distributions, install Docker using the [official installation guide](https://docs.docker.com/engine/install/) and rerun `setup`.
+System installation and adding your account to the `docker` group require confirmation and `sudo`. **Docker group membership grants root-equivalent privileges.** If setup prompts you, run `newgrp docker` or log out and back in before running build commands. On other distributions, follow the [official Docker installation guide](https://docs.docker.com/engine/install/) and rerun setup. For shared machines, consider [rootless Docker](https://docs.docker.com/engine/security/rootless/).
 
-Installing Docker requires `sudo` and confirmation. Running Docker without `sudo` may require joining the `docker` group, which **grants root-equivalent privileges**. The script asks before granting this access. Setup can build the example using the newly granted group membership, but you must still run `newgrp docker` (or log out and back in) if prompted before running normal report commands. On shared machines, consider [rootless Docker](https://docs.docker.com/engine/security/rootless/) instead.
-
-An existing Docker installation that is inaccessible or has an inactive daemon is not overwritten. Resolve existing package conflicts or daemon errors using the [Docker documentation](https://docs.docker.com/engine/install/linux-postinstall/). On systems using systemd, a newly installed Docker Engine is started automatically.
-
-## Work on a report
+## Daily use
 
 ```bash
-./scripts/report new my_report
-./scripts/report build my_report
+./scripts/new my_report
+./scripts/build my_report
+./scripts/clean my_report
+./scripts/list
 ```
 
-Edit `projects/my_report/main.tex` before building. The PDF appears at `projects/my_report/main.pdf`. Compilation intermediates stay inside `projects/my_report/build/`.
+Write your LaTeX in `projects/my_report/main.tex`. A successful build produces `projects/my_report/main.pdf` and intermediate files in `projects/my_report/build/`.
 
-Other commands:
+Scripts have one responsibility each:
 
-```bash
-./scripts/report list
-./scripts/report clean my_report
-./scripts/report build example
-```
+| Script | Responsibility |
+| --- | --- |
+| `setup` | Set up Docker and run the end-to-end test |
+| `new <name>` | Create a project from the example |
+| `build <name>` | Compile one project to PDF |
+| `clean <name>` | Remove one project's generated PDF and build directory |
+| `list` | List local projects |
+| `test` | Rebuild and validate the example PDF |
 
-## Layout
+## Repository layout
 
 ```text
 projects/
-  example/main.tex       Git-tracked starter
-  <name>/main.tex        Private report (ignored by Git)
+  example/main.tex      Git-tracked starter template
+  <name>/main.tex       Private project, ignored by Git
 scripts/
-  setup                  One-time Linux environment setup and example E2E test
-  report                 Create, build, clean, list
+  setup
+  new
+  build
+  clean
+  list
+  test
 ```
 
-`new` copies the example to a new project and refuses to overwrite existing work. Each project may add figures, bibliography, or more `.tex` files without affecting other reports.
+All report source files, figures, and exported PDFs belong inside their own project directory. You may add multiple `.tex` files using `\input{...}`; the shared build script does not need to change.
 
-Git tracks only `projects/example/` and shared tooling; all other project folders and generated PDFs are ignored. Back up private reports separately.
+`projects/example/` and the shared tooling are tracked by Git; all other project directories and generated PDFs are ignored. Back up private projects separately.

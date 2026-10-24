@@ -2,8 +2,6 @@
 set -euo pipefail
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
-REPORT="$ROOT/scripts/report"
-IMAGE="texlive/texlive:latest"
 
 fail() {
     printf 'setup: %s\n' "$1" >&2
@@ -62,41 +60,13 @@ EOF
     sudo systemctl enable --now docker
 }
 
-verify_example() {
-    local mode="$1"
-    local output="$ROOT/projects/example/main.pdf"
-    local log="$ROOT/projects/example/build/setup.log"
-    "$REPORT" clean example >/dev/null
-    mkdir -p -- "$ROOT/projects/example/build"
-    printf 'Building example to verify LaTeX to PDF...\n'
-    if [[ "$mode" == docker-group ]]; then
-        if ! sudo -u "$USER" -g docker "$REPORT" build example >"$log" 2>&1; then
-            tail -n 30 "$log" >&2
-            fail "example build failed; see $log"
-        fi
-    elif ! "$REPORT" build example >"$log" 2>&1; then
-        tail -n 30 "$log" >&2
-        fail "example build failed; see $log"
-    fi
-    [[ -s "$output" && "$(head -c 5 "$output")" == '%PDF-' ]] || fail "example PDF is missing or invalid: $output"
-    cmp -s -- "$output" "$ROOT/projects/example/build/main.pdf" || fail "example PDF does not match build output"
-    printf 'Example PDF verified: %s\n' "$output"
-}
-
-if [[ "$(id -u)" -eq 0 ]]; then
-    fail "run as your regular user, not root"
-fi
+[[ "$#" -eq 0 ]] || fail "usage: ./scripts/setup"
+[[ "$(id -u)" -ne 0 ]] || fail "run as your regular user, not root"
 
 if docker info >/dev/null 2>&1; then
     printf 'Docker is ready.\n'
-    if docker image inspect "$IMAGE" >/dev/null 2>&1; then
-        printf 'TeX Live image is ready.\n'
-    else
-        printf 'Downloading TeX Live image (approximately 9 GB)...\n'
-        docker pull "$IMAGE"
-    fi
-    verify_example direct
-    printf 'Setup complete. Run ./scripts/report new my_report\n'
+    "$ROOT/scripts/test"
+    printf 'Setup complete. Run ./scripts/new my_report\n'
     exit 0
 fi
 
@@ -117,23 +87,16 @@ if ! id -nG | tr ' ' '\n' | grep -qx docker; then
         printf 'Docker group membership is not active in this shell.\n'
     else
         printf 'The docker group grants root-equivalent access to this machine.\n'
-        confirm "Add $USER to the docker group?" || fail "group access required to run ./scripts/report without sudo"
+        confirm "Add $USER to the docker group?" || fail "group access required to run ./scripts/build without sudo"
         sudo groupadd -f docker
         sudo usermod -aG docker "$USER"
     fi
 fi
 
-if sudo docker image inspect "$IMAGE" >/dev/null 2>&1; then
-    printf 'TeX Live image is ready.\n'
-else
-    printf 'Downloading TeX Live image (approximately 9 GB)...\n'
-    sudo docker pull "$IMAGE"
-fi
-
 if docker info >/dev/null 2>&1; then
-    verify_example direct
-    printf 'Setup complete. Run ./scripts/report new my_report\n'
+    "$ROOT/scripts/test"
+    printf 'Setup complete. Run ./scripts/new my_report\n'
 else
-    verify_example docker-group
-    printf 'Setup complete. Run: newgrp docker\nThen run: ./scripts/report new my_report\n'
+    sudo -u "$USER" -g docker "$ROOT/scripts/test"
+    printf 'Setup complete. Run: newgrp docker\nThen run: ./scripts/new my_report\n'
 fi
