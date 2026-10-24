@@ -2,9 +2,9 @@
 set -euo pipefail
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
-[[ "$#" -ge 1 && "$#" -le 2 && "$1" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || { printf 'Usage: %s <name> [example-minimal|example-full]\n' "$0" >&2; exit 1; }
-TEMPLATE="${2:-example-minimal}"
-[[ "$TEMPLATE" == example-minimal || "$TEMPLATE" == example-full ]] || { printf 'Unknown template: %s\n' "$TEMPLATE" >&2; exit 1; }
+[[ "$#" -ge 1 && "$#" -le 2 && "$1" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || { printf 'Usage: %s <name> [example-lite|example-long]\n' "$0" >&2; exit 1; }
+TEMPLATE="${2:-example-lite}"
+[[ "$TEMPLATE" == example-lite || "$TEMPLATE" == example-long ]] || { printf 'Unknown template: %s\n' "$TEMPLATE" >&2; exit 1; }
 PROJECT="$ROOT/projects/$1"
 [[ ! -e "$PROJECT" && ! -L "$PROJECT" ]] || { printf 'Project already exists: %s\n' "$1" >&2; exit 1; }
 mkdir -- "$PROJECT"

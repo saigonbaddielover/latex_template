@@ -18,17 +18,17 @@ cd latex_template
 
 | Example | Contents | Recommended use |
 | --- | --- | --- |
-| `projects/example-minimal/` | One self-contained `main.tex` | Notes and short reports |
-| `projects/example-full/` | Main entry point, preamble, chapters, appendices, diagrams, tables and bibliography | Research papers, technical reports and long documents |
+| `projects/example-lite/` | One self-contained `main.tex` | Notes and short reports |
+| `projects/example-long/` | Main entry point, preamble, chapters, appendices, diagrams, tables and bibliography | Research papers, technical reports and long documents |
 
 Create a project from either:
 
 ```bash
 ./scripts/new quick_notes
-./scripts/new thesis example-full
+./scripts/new thesis example-long
 ```
 
-`new` defaults to `example-minimal` and copies the chosen template without generated PDFs or build files. Project names must be unique. Each project keeps its own `main.tex` as the build entry point, even when the document spans hundreds of pages.
+`new` defaults to `example-lite` and copies the chosen template without generated PDFs or build files. Project names must be unique. Each project keeps its own `main.tex` as the build entry point, even when the document spans hundreds of pages.
 
 ## Build and manage reports
 
@@ -48,9 +48,9 @@ The long-form example demonstrates chapter organization (`\input`), a preamble, 
 
 ```text
 projects/
-  example-minimal/
+  example-lite/
     main.tex
-  example-full/
+  example-long/
     main.tex
     preamble.tex
     chapters/
@@ -68,4 +68,4 @@ scripts/
   test                    Build and validate both examples
 ```
 
-`.gitignore` tracks only `projects/example-minimal/`, `projects/example-full/` and the shared scripts; it ignores other project directories, PDFs and build artifacts. Back up private reports separately.
+`.gitignore` tracks only `projects/example-lite/`, `projects/example-long/` and the shared scripts; it ignores other project directories, PDFs and build artifacts. Back up private reports separately.
