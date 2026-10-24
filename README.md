@@ -35,12 +35,13 @@ Create a project from either:
 ```bash
 ./scripts/build.sh quick_notes
 ./scripts/build.sh thesis
+./scripts/build.sh my_cv main_vi.tex
 ./scripts/clean.sh thesis
 ./scripts/list.sh
 ./scripts/test.sh
 ```
 
-Edit `projects/<name>/main.tex` and supporting files in the same project directory. The final PDF is written to `projects/<name>/main.pdf`, with intermediates in `projects/<name>/build/`. The shared build script uses XeLaTeX and latexmk in Docker; no TeX installation or editor integration is needed on the host.
+Edit `projects/<name>/main.tex` and supporting files in the same project directory. The final PDF is written to `projects/<name>/main.pdf`, with intermediates in `projects/<name>/build/`. The shared build script uses XeLaTeX and latexmk in Docker; no TeX installation or editor integration is needed on the host. Pass an optional top-level LaTeX file to build another language, e.g. \`./scripts/build.sh my_cv main_vi.tex\`, which creates \`projects/my_cv/main_vi.pdf\` independently of the default \`main.pdf\`. \`clean.sh\` removes the cache and both standard PDF outputs; do not run it before every incremental build.
 
 The long-form example demonstrates chapter organization (`\input`), a preamble, equations, cross-references, a TikZ diagram, a reusable table, BibTeX citations and an appendix. Replace all illustrative text and values before publishing. For large projects, add chapters, figures and source files without changing the build script.
 
