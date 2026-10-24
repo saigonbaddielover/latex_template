@@ -12,11 +12,13 @@ cd latex_template
 ./scripts/setup
 ```
 
-`setup` checks Docker Engine and downloads the `texlive/texlive:latest` image (about 9 GB) if necessary. If Docker is already working, it does not reinstall or reconfigure it. If Docker is missing, it offers to install Docker Engine using official package repositories on **Ubuntu, Debian, Fedora, or RHEL**. On other distributions, install Docker using the [official installation guide](https://docs.docker.com/engine/install/) and rerun `setup`.
+`setup` checks Docker Engine and downloads the `texlive/texlive:latest` image (about 9 GB) if necessary. It **builds `projects/example/main.tex` from scratch** and checks that `projects/example/main.pdf` is a valid, nonempty PDF. Setup fails if the end-to-end build fails. Re-running setup rebuilds the example but does not reinstall Docker or redownload an existing image.
 
-Installing Docker requires `sudo` and confirmation. Running Docker without `sudo` may require joining the `docker` group, which **grants root-equivalent privileges**. The script asks before granting this access. After initial installation, run `newgrp docker` (or log out and back in) if prompted; on systems using systemd, Docker is started automatically. On shared machines, consider [rootless Docker](https://docs.docker.com/engine/security/rootless/) instead.
+If Docker is missing, setup offers to install Docker Engine using official package repositories on **Ubuntu, Debian, Fedora, or RHEL**. On other distributions, install Docker using the [official installation guide](https://docs.docker.com/engine/install/) and rerun `setup`.
 
-An existing Docker installation that is inaccessible or has an inactive daemon is not overwritten. Resolve existing package conflicts or daemon errors using the [Docker documentation](https://docs.docker.com/engine/install/linux-postinstall/).
+Installing Docker requires `sudo` and confirmation. Running Docker without `sudo` may require joining the `docker` group, which **grants root-equivalent privileges**. The script asks before granting this access. Setup can build the example using the newly granted group membership, but you must still run `newgrp docker` (or log out and back in) if prompted before running normal report commands. On shared machines, consider [rootless Docker](https://docs.docker.com/engine/security/rootless/) instead.
+
+An existing Docker installation that is inaccessible or has an inactive daemon is not overwritten. Resolve existing package conflicts or daemon errors using the [Docker documentation](https://docs.docker.com/engine/install/linux-postinstall/). On systems using systemd, a newly installed Docker Engine is started automatically.
 
 ## Work on a report
 
@@ -42,7 +44,7 @@ projects/
   example/main.tex       Git-tracked starter
   <name>/main.tex        Private report (ignored by Git)
 scripts/
-  setup                  One-time Linux environment setup
+  setup                  One-time Linux environment setup and example E2E test
   report                 Create, build, clean, list
 ```
 

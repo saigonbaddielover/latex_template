@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+REPORT="$ROOT/scripts/report"
 IMAGE="texlive/texlive:latest"
 
 fail() {
@@ -60,6 +62,27 @@ EOF
     sudo systemctl enable --now docker
 }
 
+verify_example() {
+    local mode="$1"
+    local output="$ROOT/projects/example/main.pdf"
+    local log="$ROOT/projects/example/build/setup.log"
+    "$REPORT" clean example >/dev/null
+    mkdir -p -- "$ROOT/projects/example/build"
+    printf 'Building example to verify LaTeX to PDF...\n'
+    if [[ "$mode" == docker-group ]]; then
+        if ! sudo -u "$USER" -g docker "$REPORT" build example >"$log" 2>&1; then
+            tail -n 30 "$log" >&2
+            fail "example build failed; see $log"
+        fi
+    elif ! "$REPORT" build example >"$log" 2>&1; then
+        tail -n 30 "$log" >&2
+        fail "example build failed; see $log"
+    fi
+    [[ -s "$output" && "$(head -c 5 "$output")" == '%PDF-' ]] || fail "example PDF is missing or invalid: $output"
+    cmp -s -- "$output" "$ROOT/projects/example/build/main.pdf" || fail "example PDF does not match build output"
+    printf 'Example PDF verified: %s\n' "$output"
+}
+
 if [[ "$(id -u)" -eq 0 ]]; then
     fail "run as your regular user, not root"
 fi
@@ -72,6 +95,7 @@ if docker info >/dev/null 2>&1; then
         printf 'Downloading TeX Live image (approximately 9 GB)...\n'
         docker pull "$IMAGE"
     fi
+    verify_example direct
     printf 'Setup complete. Run ./scripts/report new my_report\n'
     exit 0
 fi
@@ -107,7 +131,9 @@ else
 fi
 
 if docker info >/dev/null 2>&1; then
+    verify_example direct
     printf 'Setup complete. Run ./scripts/report new my_report\n'
 else
+    verify_example docker-group
     printf 'Setup complete. Run: newgrp docker\nThen run: ./scripts/report new my_report\n'
 fi
