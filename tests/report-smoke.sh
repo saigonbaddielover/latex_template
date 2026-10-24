@@ -16,11 +16,17 @@ FIRST="$(allocate_name)"
 SECOND="$(allocate_name)"
 trap 'rm -rf -- "$ROOT/projects/$FIRST" "$ROOT/projects/$SECOND"' EXIT
 
-printf '[1/5] Project creation RUNNING\n'
+printf '[1/5] Project creation and tracking RUNNING\n'
+test -f "$ROOT/projects/example/main.tex"
+test -f "$ROOT/projects/example/preamble.tex"
+test -f "$ROOT/projects/example/sections/content.tex"
+git -C "$ROOT" ls-files --error-unmatch projects/example/main.tex >/dev/null
 "$REPORT" new "$FIRST" >/dev/null
 "$REPORT" new "$SECOND" >/dev/null
 test -f "$ROOT/projects/$FIRST/main.tex"
 test -f "$ROOT/projects/$SECOND/main.tex"
+test ! -e "$ROOT/projects/$FIRST/main.pdf"
+git -C "$ROOT" check-ignore -q "projects/$FIRST/main.tex"
 if "$REPORT" new "$FIRST" >/dev/null 2>&1; then
     printf '[RESULT] FAIL existing project overwritten\n'
     exit 1
@@ -29,13 +35,9 @@ if "$REPORT" new '../escape' >/dev/null 2>&1; then
     printf '[RESULT] FAIL unsafe project name accepted\n'
     exit 1
 fi
-if "$REPORT" clean example/diabetes_report >/dev/null 2>&1; then
-    printf '[RESULT] FAIL tracked example outputs were not protected\n'
-    exit 1
-fi
 test "$("$REPORT" list | grep -xc "$FIRST")" -eq 1
 test "$("$REPORT" list | grep -xc "$SECOND")" -eq 1
-printf '[1/5] Project creation OK\n'
+printf '[1/5] Project creation and tracking OK\n'
 
 printf '[2/5] First PDF RUNNING\n'
 if ! "$REPORT" build "$FIRST" >"$ROOT/projects/$FIRST/build-test.log" 2>&1; then

@@ -1,73 +1,77 @@
 # Multi-project LaTeX workspace
 
-Write and export independent LaTeX reports from one workspace. The framework and examples are versioned; reports under `projects/` are private to the local checkout and are not tracked by Git.
+Write independent LaTeX reports and export each to PDF using a shared Docker-based CLI. Only `projects/example/` and the shared workspace tooling are tracked in Git.
 
-## Layout
+## Directory layout
 
 ```text
 latex_template/
-├── example/
-│   ├── basic/                Reusable minimal document
+├── projects/
+│   ├── example/             Git-tracked reusable reference project
 │   │   ├── main.tex
 │   │   ├── preamble.tex
 │   │   └── sections/
-│   └── diabetes_report/      Original reference report
-├── projects/                 Entirely gitignored except .gitkeep
-│   ├── .gitkeep
-│   └── <name>/
-│       ├── main.tex
-│       ├── preamble.tex
-│       ├── sections/
-│       ├── build/           Generated when building
-│       └── main.pdf         Generated when building
-├── scripts/report           Shared build and project CLI
+│   ├── my_report/           Local project ignored by Git
+│   │   ├── main.tex
+│   │   ├── preamble.tex
+│   │   ├── sections/
+│   │   ├── build/           Generated auxiliary files
+│   │   └── main.pdf         Generated PDF
+│   └── .gitkeep
+├── scripts/report           Shared project and PDF CLI
 ├── tests/report-smoke.sh    Independent-project smoke tests
-└── .vscode/tasks.json       Optional VS Code tasks
+├── .vscode/tasks.json       Optional VS Code tasks
+└── .gitignore
 ```
 
-There is no root-level `main.tex` or project-specific PDF. Every report's source, assets, and build outputs stay inside its own directory.
+All report source files, assets, generated files, and PDFs are contained within each `projects/<name>/` directory. No `main.tex`, PDF, or build directory is required at the repository root.
 
 ## Requirements
 
-- Docker Engine running and accessible to the current user.
-- Bash, GNU coreutils, and Git.
-- TeX Live is provided by the Docker image `texlive/texlive:latest`; the image is downloaded on first use.
+- Docker Engine accessible to the current user
+- Bash and standard Linux tools
+
+The image `texlive/texlive:latest` supplies XeLaTeX and latexmk. The first build downloads the image if missing.
 
 ## Commands
 
-From the workspace root:
-
 ```bash
-./scripts/report new research_notes
-./scripts/report build research_notes
+./scripts/report new my_report
+./scripts/report build my_report
 ./scripts/report list
-./scripts/report clean research_notes
-./scripts/report build example/basic
+./scripts/report clean my_report
+./scripts/report build example
 ```
 
-These commands can also be called with an absolute script path from any working directory.
+The CLI finds its workspace root automatically, regardless of the terminal's current directory. Project names may contain letters, digits, dots, underscores, and hyphens, beginning with a letter or digit.
 
-The `new` command copies only the files in `example/basic/`. It refuses to overwrite an existing project and restricts names to letters, numbers, dots, underscores, and dashes (starting with a letter or number). Edit `projects/research_notes/main.tex`, the associated `preamble.tex`, and its `sections/` as needed.
+- `new` copies only the core `main.tex`, `preamble.tex`, and `sections/` files from `projects/example/`. It refuses to overwrite an existing directory.
+- `build` mounts only the selected project in Docker and writes `build/main.pdf` and `main.pdf` under that project.
+- `clean` removes only the selected project's generated `build/` and `main.pdf`.
+- `list` lists the projects, including `example`.
 
-`build` mounts only the selected project into Docker and runs `latexmk` with XeLaTeX. LaTeX auxiliary files go to `<project>/build/`. The final PDF is copied to `<project>/main.pdf`. Builds do not run code in other projects. `clean` removes only the selected project's generated `build/` and `main.pdf`; it does not delete project source.
+Projects may customize their own preamble, content, figures, data, and bibliographies without affecting other reports.
 
-Add images, tables, code, data, and bibliographies under each project's own directory. Each project maintains its own `preamble.tex` and can customize layout without affecting others. The shared CLI only handles project creation and LaTeX compilation.
+## Git tracking
 
-## Version control and examples
+The root `.gitignore` ignores all `projects/` children except `projects/example/`:
 
-Only the CLI, template, VS Code tasks, tests, and examples belong in Git. `projects/` is ignored (including source, datasets, and PDFs); do not force-add private work. Back up local projects separately because pushing this repository does not protect them.
+```gitignore
+/projects/*
+!/projects/.gitkeep
+!/projects/example/
+```
 
-`example/basic/` is safe to use as a sample build target. `example/diabetes_report/` is retained as a reference for statistical reporting; its R dependencies and dataset are not part of the generic build workflow.
-The CLI refuses to overwrite or clean Git-tracked example PDFs and build artifacts, preserving the original diabetes example.
+Only the example's source files are committed; generated PDF and LaTeX auxiliary files are ignored as well. Other local project directories are excluded from `git status` and `git push`. Back up private projects separately and avoid forcibly adding them to Git.
 
 ## VS Code
 
-Open the repository root in VS Code and use **Terminal → Run Task → Report: build** (or the default build task). Enter the project name, or `example/basic`. Additional tasks support creating, cleaning, and listing projects. The CLI works the same way over Remote-SSH.
+Open the repository root and use **Terminal → Run Task → Report: build**, then enter `example` or another project name. Tasks are also available for creating, cleaning, and listing reports.
 
-## Verify
+## Tests
 
 ```bash
 bash tests/report-smoke.sh
 ```
 
-The test creates two disposable projects under `projects/`, builds them, checks their PDFs and isolation, cleans them, and removes only the test directories. It requires the Docker image and takes longer the first time.
+The smoke test creates two disposable projects, checks builds and clean isolation, verifies Git ignore rules, and removes only its own temporary directories.

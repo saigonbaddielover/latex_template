@@ -1,5 +1,6 @@
 /projects/*
 !/projects/.gitkeep
+!/projects/example/
 /build/
 /main.pdf
 **/build/

@@ -13,8 +13,8 @@ usage() {
     cat <<'USAGE'
 Usage:
   ./scripts/report new <name>
-  ./scripts/report build <name|example/name>
-  ./scripts/report clean <name|example/name>
+  ./scripts/report build <name>
+  ./scripts/report clean <name>
   ./scripts/report list
   ./scripts/report help
 USAGE
@@ -25,30 +25,19 @@ validate_name() {
 }
 
 resolve_project() {
-    local input="$1"
-    local name
-    case "$input" in
-        example/*)
-            name="${input#example/}"
-            validate_name "$name"
-            PROJECT="$ROOT/example/$name"
-            ;;
-        *)
-            validate_name "$input"
-            PROJECT="$ROOT/projects/$input"
-            ;;
-    esac
-    [[ -d "$PROJECT" && ! -L "$PROJECT" ]] || fail "project not found: $input"
-    [[ -f "$PROJECT/main.tex" && ! -L "$PROJECT/main.tex" ]] || fail "main.tex not found: $input"
-    [[ ! -L "$PROJECT/build" ]] || fail "refusing symlinked build directory: $input"
-    [[ ! -L "$PROJECT/main.pdf" ]] || fail "refusing symlinked PDF output: $input"
+    local name="$1"
+    validate_name "$name"
+    PROJECT="$ROOT/projects/$name"
+    [[ -d "$PROJECT" && ! -L "$PROJECT" ]] || fail "project not found: $name"
+    [[ -f "$PROJECT/main.tex" && ! -L "$PROJECT/main.tex" ]] || fail "main.tex not found: $name"
+    [[ ! -L "$PROJECT/build" ]] || fail "refusing symlinked build directory: $name"
+    [[ ! -L "$PROJECT/main.pdf" ]] || fail "refusing symlinked PDF output: $name"
 }
 
 ensure_untracked_outputs() {
     local relative="${PROJECT#"$ROOT/"}"
-    if [[ "$PROJECT" == "$ROOT/example/"* ]] &&
-        [[ -n "$(git -C "$ROOT" ls-files -- "$relative/build" "$relative/main.pdf")" ]]; then
-        fail "example has Git-tracked build outputs; refusing to modify: $relative"
+    if [[ -n "$(git -C "$ROOT" ls-files -- "$relative/build" "$relative/main.pdf")" ]]; then
+        fail "project has Git-tracked build outputs; refusing to modify: $relative"
     fi
 }
 
@@ -59,7 +48,8 @@ new_project() {
     [[ -d "$ROOT/projects" && ! -L "$ROOT/projects" ]] || fail "projects directory is unavailable"
     [[ ! -e "$target" && ! -L "$target" ]] || fail "project already exists: $name"
     mkdir -- "$target"
-    cp -a -- "$ROOT/example/basic/." "$target/"
+    cp -a -- "$ROOT/projects/example/main.tex" "$ROOT/projects/example/preamble.tex" "$target/"
+    cp -a -- "$ROOT/projects/example/sections" "$target/"
     printf 'Created: %s\n' "$target"
 }
 

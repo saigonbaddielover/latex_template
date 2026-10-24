@@ -38,7 +38,7 @@
     {
       "id": "reportProject",
       "type": "promptString",
-      "description": "Project name or example/basic"
+      "description": "Project name (example or a local project)"
     },
     {
       "id": "newReportName",
