@@ -1,5 +1,5 @@
 /projects/*
-!/projects/example/
+!/projects/example-minimal/
 !/projects/example-full/
 **/build/
 **/main.pdf

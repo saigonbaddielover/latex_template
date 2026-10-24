@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 [[ "$#" -eq 0 ]] || { printf 'Usage: %s\n' "$0" >&2; exit 1; }
 
-for NAME in example example-full; do
+for NAME in example-minimal example-full; do
     PROJECT="$ROOT/projects/$NAME"
     PDF="$PROJECT/main.pdf"
     "$ROOT/scripts/clean" "$NAME" >/dev/null

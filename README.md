@@ -18,7 +18,7 @@ cd latex_template
 
 | Example | Contents | Recommended use |
 | --- | --- | --- |
-| `projects/example/` | One self-contained `main.tex` | Notes and short reports |
+| `projects/example-minimal/` | One self-contained `main.tex` | Notes and short reports |
 | `projects/example-full/` | Main entry point, preamble, chapters, appendices, diagrams, tables and bibliography | Research papers, technical reports and long documents |
 
 Create a project from either:
@@ -28,7 +28,7 @@ Create a project from either:
 ./scripts/new thesis example-full
 ```
 
-`new` defaults to `example` and copies the chosen template without generated PDFs or build files. Project names must be unique. Each project keeps its own `main.tex` as the build entry point, even when the document spans hundreds of pages.
+`new` defaults to `example-minimal` and copies the chosen template without generated PDFs or build files. Project names must be unique. Each project keeps its own `main.tex` as the build entry point, even when the document spans hundreds of pages.
 
 ## Build and manage reports
 
@@ -48,7 +48,7 @@ The long-form example demonstrates chapter organization (`\input`), a preamble, 
 
 ```text
 projects/
-  example/
+  example-minimal/
     main.tex
   example-full/
     main.tex
@@ -68,4 +68,4 @@ scripts/
   test                    Build and validate both examples
 ```
 
-`.gitignore` tracks only `projects/example/`, `projects/example-full/` and the shared scripts; it ignores other project directories, PDFs and build artifacts. Back up private reports separately.
+`.gitignore` tracks only `projects/example-minimal/`, `projects/example-full/` and the shared scripts; it ignores other project directories, PDFs and build artifacts. Back up private reports separately.
