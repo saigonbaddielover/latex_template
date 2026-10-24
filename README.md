@@ -52,12 +52,14 @@ projects/
     main.tex
   example-full/
     main.tex
-    preamble.tex
+    config/
+      preamble.tex
     chapters/
     appendices/
     figures/
     tables/
-    references.bib
+    bibliography/
+      references.bib
   <name>/                 Private report directory, ignored by Git
 scripts/
   setup.sh                   Prepare Docker, run E2E tests
