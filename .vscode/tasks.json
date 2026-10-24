@@ -1,0 +1,49 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Report: build",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/report",
+      "args": ["build", "${input:reportProject}"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Report: new",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/report",
+      "args": ["new", "${input:newReportName}"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Report: clean",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/report",
+      "args": ["clean", "${input:reportProject}"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Report: list",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/report",
+      "args": ["list"],
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "reportProject",
+      "type": "promptString",
+      "description": "Project name or example/basic"
+    },
+    {
+      "id": "newReportName",
+      "type": "promptString",
+      "description": "New project name"
+    }
+  ]
+}

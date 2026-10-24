@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+IMAGE="texlive/texlive:latest"
+
+fail() {
+    printf 'report: %s\n' "$*" >&2
+    exit 1
+}
+
+usage() {
+    cat <<'USAGE'
+Usage:
+  ./scripts/report new <name>
+  ./scripts/report build <name|example/name>
+  ./scripts/report clean <name|example/name>
+  ./scripts/report list
+  ./scripts/report help
+USAGE
+}
+
+validate_name() {
+    [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || fail "invalid project name: $1"
+}
+
+resolve_project() {
+    local input="$1"
+    local name
+    case "$input" in
+        example/*)
+            name="${input#example/}"
+            validate_name "$name"
+            PROJECT="$ROOT/example/$name"
+            ;;
+        *)
+            validate_name "$input"
+            PROJECT="$ROOT/projects/$input"
+            ;;
+    esac
+    [[ -d "$PROJECT" && ! -L "$PROJECT" ]] || fail "project not found: $input"
+    [[ -f "$PROJECT/main.tex" && ! -L "$PROJECT/main.tex" ]] || fail "main.tex not found: $input"
+    [[ ! -L "$PROJECT/build" ]] || fail "refusing symlinked build directory: $input"
+    [[ ! -L "$PROJECT/main.pdf" ]] || fail "refusing symlinked PDF output: $input"
+}
+
+ensure_untracked_outputs() {
+    local relative="${PROJECT#"$ROOT/"}"
+    if [[ "$PROJECT" == "$ROOT/example/"* ]] &&
+        [[ -n "$(git -C "$ROOT" ls-files -- "$relative/build" "$relative/main.pdf")" ]]; then
+        fail "example has Git-tracked build outputs; refusing to modify: $relative"
+    fi
+}
+
+new_project() {
+    local name="$1"
+    validate_name "$name"
+    local target="$ROOT/projects/$name"
+    [[ -d "$ROOT/projects" && ! -L "$ROOT/projects" ]] || fail "projects directory is unavailable"
+    [[ ! -e "$target" && ! -L "$target" ]] || fail "project already exists: $name"
+    mkdir -- "$target"
+    cp -a -- "$ROOT/example/basic/." "$target/"
+    printf 'Created: %s\n' "$target"
+}
+
+build_project() {
+    resolve_project "$1"
+    ensure_untracked_outputs
+    command -v docker >/dev/null 2>&1 || fail "Docker is required"
+    mkdir -p -- "$PROJECT/build"
+    docker run --rm \
+        --user "$(id -u):$(id -g)" \
+        --mount "type=bind,source=$PROJECT,target=/work" \
+        --workdir /work \
+        --env HOME=/tmp \
+        "$IMAGE" \
+        latexmk -xelatex -interaction=nonstopmode -halt-on-error -file-line-error -synctex=1 -outdir=build main.tex
+    cp -- "$PROJECT/build/main.pdf" "$PROJECT/main.pdf"
+    printf 'PDF: %s\n' "$PROJECT/main.pdf"
+}
+
+clean_project() {
+    resolve_project "$1"
+    ensure_untracked_outputs
+    rm -rf -- "$PROJECT/build"
+    rm -f -- "$PROJECT/main.pdf"
+    printf 'Cleaned: %s\n' "$PROJECT"
+}
+
+list_projects() {
+    [[ -d "$ROOT/projects" && ! -L "$ROOT/projects" ]] || fail "projects directory is unavailable"
+    find "$ROOT/projects" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | LC_ALL=C sort
+}
+
+main() {
+    local action="${1:-help}"
+    case "$action" in
+        new|build|clean)
+            [[ "$#" -eq 2 ]] || { usage >&2; fail "$action requires exactly one project name"; }
+            case "$action" in
+                new) new_project "$2" ;;
+                build) build_project "$2" ;;
+                clean) clean_project "$2" ;;
+            esac
+            ;;
+        list)
+            [[ "$#" -eq 1 ]] || fail "list accepts no arguments"
+            list_projects
+            ;;
+        help|-h|--help)
+            usage
+            ;;
+        *)
+            usage >&2
+            fail "unknown command: $action"
+            ;;
+    esac
+}
+
+main "$@"

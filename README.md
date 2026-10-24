@@ -1,53 +1,73 @@
-# Reusable LaTeX to PDF Template
+# Multi-project LaTeX workspace
 
-This repository is a project-independent starting point for writing documents in LaTeX and exporting PDFs. The root template contains no university branding, dataset, or project-specific report content.
+Write and export independent LaTeX reports from one workspace. The framework and examples are versioned; reports under `projects/` are private to the local checkout and are not tracked by Git.
 
-## Quick start
-
-Requirements: Docker Engine, GNU Make, and Git (only when cloning). The first build downloads the TeX Live image, so it may be significantly slower than later builds.
-
-1. Create a new directory from the template. Use GitHub's **Use this template** feature if enabled, or copy these files into your project: `main.tex`, `preamble.tex`, `sections/`, `Makefile`, `.vscode/settings.json`, and `.gitignore`.
-2. Edit the title, author, and document structure in `main.tex`.
-3. Write sections in `sections/`; change typography and packages in `preamble.tex`.
-4. Build or clean from any shell in the project root:
-
-   ```bash
-   make pdf
-   make clean
-   ```
-
-`make pdf` runs XeLaTeX through `latexmk` inside Docker. It writes intermediate files to `build/`, makes the compiled PDF available at `build/main.pdf`, and copies it to `main.pdf` at the project root. `make clean` removes those generated outputs.
-
-The Docker image is `texlive/texlive:latest`. For byte-for-byte stable builds across time, replace that image reference in `Makefile` with a verified image digest and retain it in version control.
-
-## Structure
+## Layout
 
 ```text
-.
-├── main.tex                  Entry point: document metadata and section order
-├── preamble.tex              Shared packages, fonts, and page layout
-├── sections/
-│   ├── introduction.tex
-│   ├── content.tex
-│   └── conclusion.tex
-├── Makefile                  Docker-based PDF build and cleanup
-├── .vscode/settings.json     Optional LaTeX Workshop build recipe
-├── example/                  Independent legacy examples
-├── build/                    Generated auxiliary files (ignored)
-└── main.pdf                  Generated output (ignored)
+latex_template/
+├── example/
+│   ├── basic/                Reusable minimal document
+│   │   ├── main.tex
+│   │   ├── preamble.tex
+│   │   └── sections/
+│   └── diabetes_report/      Original reference report
+├── projects/                 Entirely gitignored except .gitkeep
+│   ├── .gitkeep
+│   └── <name>/
+│       ├── main.tex
+│       ├── preamble.tex
+│       ├── sections/
+│       ├── build/           Generated when building
+│       └── main.pdf         Generated when building
+├── scripts/report           Shared build and project CLI
+├── tests/report-smoke.sh    Independent-project smoke tests
+└── .vscode/tasks.json       Optional VS Code tasks
 ```
 
-The default XeLaTeX setup uses a TeX Live font and accepts UTF-8, including Vietnamese. Add packages and language-specific typography in `preamble.tex` according to each project's needs.
+There is no root-level `main.tex` or project-specific PDF. Every report's source, assets, and build outputs stay inside its own directory.
+
+## Requirements
+
+- Docker Engine running and accessible to the current user.
+- Bash, GNU coreutils, and Git.
+- TeX Live is provided by the Docker image `texlive/texlive:latest`; the image is downloaded on first use.
+
+## Commands
+
+From the workspace root:
+
+```bash
+./scripts/report new research_notes
+./scripts/report build research_notes
+./scripts/report list
+./scripts/report clean research_notes
+./scripts/report build example/basic
+```
+
+These commands can also be called with an absolute script path from any working directory.
+
+The `new` command copies only the files in `example/basic/`. It refuses to overwrite an existing project and restricts names to letters, numbers, dots, underscores, and dashes (starting with a letter or number). Edit `projects/research_notes/main.tex`, the associated `preamble.tex`, and its `sections/` as needed.
+
+`build` mounts only the selected project into Docker and runs `latexmk` with XeLaTeX. LaTeX auxiliary files go to `<project>/build/`. The final PDF is copied to `<project>/main.pdf`. Builds do not run code in other projects. `clean` removes only the selected project's generated `build/` and `main.pdf`; it does not delete project source.
+
+Add images, tables, code, data, and bibliographies under each project's own directory. Each project maintains its own `preamble.tex` and can customize layout without affecting others. The shared CLI only handles project creation and LaTeX compilation.
+
+## Version control and examples
+
+Only the CLI, template, VS Code tasks, tests, and examples belong in Git. `projects/` is ignored (including source, datasets, and PDFs); do not force-add private work. Back up local projects separately because pushing this repository does not protect them.
+
+`example/basic/` is safe to use as a sample build target. `example/diabetes_report/` is retained as a reference for statistical reporting; its R dependencies and dataset are not part of the generic build workflow.
+The CLI refuses to overwrite or clean Git-tracked example PDFs and build artifacts, preserving the original diabetes example.
 
 ## VS Code
 
-Open the project directory in VS Code with the **LaTeX Workshop** extension installed. Use **Build LaTeX project**; the committed workspace recipe runs `make pdf`, including inside Remote-SSH sessions where Docker is available. The command-line build does not require VS Code.
+Open the repository root in VS Code and use **Terminal → Run Task → Report: build** (or the default build task). Enter the project name, or `example/basic`. Additional tasks support creating, cleaning, and listing projects. The CLI works the same way over Remote-SSH.
 
-## Adapting the template
+## Verify
 
-- Add or remove section files, then update the corresponding `\input{...}` lines in `main.tex`.
-- Put figures in a directory of your choice and reference them with `\includegraphics{...}`.
-- Add citations, bibliography tools, custom classes, or mathematics packages only when the document requires them.
-- Use a separate copy for each project; do not put unrelated reports into the template's root.
+```bash
+bash tests/report-smoke.sh
+```
 
-The `example/diabetes_report/` directory is preserved from the original repository for historical reference. It is **not** imported by the generic template and requires its own R tooling and dataset to rerun its analysis.
+The test creates two disposable projects under `projects/`, builds them, checks their PDFs and isolation, cleans them, and removes only the test directories. It requires the Docker image and takes longer the first time.

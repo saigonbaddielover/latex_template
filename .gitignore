@@ -1,5 +1,9 @@
+/projects/*
+!/projects/.gitkeep
 /build/
 /main.pdf
+**/build/
+**/main.pdf
 *.aux
 *.bbl
 *.bcf
@@ -13,3 +17,4 @@
 *.run.xml
 *.synctex.gz
 *.toc
+*.xdv
