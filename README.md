@@ -19,13 +19,13 @@ cd latex_template
 | Example | Contents | Recommended use |
 | --- | --- | --- |
 | `projects/example-lite/` | One self-contained `main.tex` | Notes and short reports |
-| `projects/example-long/` | Main entry point, preamble, chapters, appendices, diagrams, tables and bibliography | Research papers, technical reports and long documents |
+| `projects/example-full/` | Main entry point, preamble, chapters, appendices, diagrams, tables and bibliography | Research papers, technical reports and long documents |
 
 Create a project from either:
 
 ```bash
 ./scripts/new.sh quick_notes
-./scripts/new.sh thesis example-long
+./scripts/new.sh thesis example-full
 ```
 
 `new.sh` defaults to `example-lite` and copies the chosen template without generated PDFs or build files. Project names must be unique. Each project keeps its own `main.tex` as the build entry point, even when the document spans hundreds of pages.
@@ -50,7 +50,7 @@ The long-form example demonstrates chapter organization (`\input`), a preamble, 
 projects/
   example-lite/
     main.tex
-  example-long/
+  example-full/
     main.tex
     preamble.tex
     chapters/
@@ -68,4 +68,4 @@ scripts/
   test.sh                    Build and validate both examples
 ```
 
-`.gitignore` tracks only `projects/example-lite/`, `projects/example-long/` and the shared scripts; it ignores other project directories, PDFs and build artifacts. Back up private reports separately.
+`.gitignore` tracks only `projects/example-lite/`, `projects/example-full/` and the shared scripts; it ignores other project directories, PDFs and build artifacts. Back up private reports separately.
